@@ -1,0 +1,61 @@
+name: Compilar Apurador Fiscal Windows V5
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Baixar projeto
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Atualizar PIP
+        run: python -m pip install --upgrade pip
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Compilar programa desktop
+        shell: cmd
+        run: |
+          pyinstaller --noconfirm --clean --windowed ^
+            --name "Apurador Fiscal" ^
+            --icon assets\app_icon.ico ^
+            --add-data "assets;assets" ^
+            main.py
+
+      - name: Verificar executavel
+        shell: powershell
+        run: |
+          Get-ChildItem -Path dist -Recurse
+          if (!(Test-Path "dist\Apurador Fiscal\Apurador Fiscal.exe")) {
+            throw "ERRO: Apurador Fiscal.exe nao foi criado."
+          }
+
+      - name: Instalar Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Criar instalador Windows
+        shell: powershell
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss'
+
+      - name: Publicar instalador
+        uses: actions/upload-artifact@v4
+        with:
+          name: Apurador-Fiscal-Windows-V5
+          path: installer_output/Apurador_Fiscal_Setup_V5.exe
+          if-no-files-found: error
+          retention-days: 30
